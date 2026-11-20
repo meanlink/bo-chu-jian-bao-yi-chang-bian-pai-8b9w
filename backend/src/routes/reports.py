@@ -25,8 +25,11 @@ def toggle(id:int,db=Depends(get_db),u=Depends(admin_only)):
     r.enabled=not r.enabled;record(db,u.email,'report.toggle',{'id':id,'enabled':r.enabled});db.commit()
     return report_dict(r)
 @router.get('/deliveries')
-def deliveries(db=Depends(get_db),u=Depends(current_user)):
-    return [delivery_dict(d) for d in db.scalars(select(Delivery).order_by(Delivery.id.desc()).limit(100))]
+def deliveries(bulletin_version_id: int | None = None, db=Depends(get_db), u=Depends(current_user)):
+    stmt = select(Delivery).order_by(Delivery.id.desc()).limit(100)
+    if bulletin_version_id is not None:
+        stmt = select(Delivery).where(Delivery.bulletin_version_id == bulletin_version_id)
+    return [delivery_dict(d) for d in db.scalars(stmt)]
 @router.get('/deliveries/{id}/download')
 def download(id:int,format:str='csv',db=Depends(get_db),u=Depends(current_user)):
     d=db.get(Delivery,id)

@@ -107,6 +107,12 @@ def analyze(records, params):
     return {
         "summary": f"{channel}以{parsed[0][0]}至{parsed[29][0]}为固定基准；后续{len(output)}日中{len(anomalies)}日EWMA越限，最新日{latest['day']}为{latest['status']}。",
         "metrics": [{"label": "基准均值", "value": round(mean, 4), "unit": unit}, {"label": "基准标准差", "value": round(sigma, 4), "unit": unit}, {"label": "越限日数", "value": len(anomalies), "unit": "日"}, {"label": "最新EWMA", "value": latest["ewma"], "unit": unit}],
+        # 完整越限日清单（全量），简报系列的首发与增删改均以此为准；table 仍只展示最近 25 条。
+        "anomalies": anomalies,
+        "baseline": {"channel": channel, "metric": metric, "smoothing": smoothing, "control_limit": control_limit,
+                     "mean": round(mean, 6), "sigma": round(sigma, 6), "unit": unit,
+                     "baseline_start": str(parsed[0][0]), "baseline_end": str(parsed[29][0]),
+                     "monitor_days": len(output)},
         "table": {"columns": [{"key": "day", "label": "播出日"}, {"key": "actual", "label": f"实测({unit})"}, {"key": "ewma", "label": "EWMA"}, {"key": "lower", "label": "下控制限"}, {"key": "upper", "label": "上控制限"}, {"key": "status", "label": "简报标记"}], "rows": table_rows},
         "chart": {"type": "line", "labels": [row["day"] for row in output], "series": [{"name": "EWMA", "values": [row["ewma"] for row in output]}, {"name": "下控制限", "values": [row["lower"] for row in output]}, {"name": "上控制限", "values": [row["upper"] for row in output]}]},
         "findings": [f"λ={smoothing:g}，L={control_limit:g}；基准固定30日，不使用未来监测值重新估计均值与标准差。", f"{'最近越限日为'+anomalies[-1]['day']+'，状态'+anomalies[-1]['status'] if anomalies else '本次未检测到越限日；仍应留存基准和参数'}。", "异常清单只展示最近25个越限日；无越限时展示最近14日，完整序列保留在图表数据。", "在分发模块选择本运行结果并设置计划；worker按实际时间投递至本地收件箱，分析函数不会发送消息。"],
